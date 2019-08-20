@@ -4,7 +4,7 @@ platform: linux
 params:
   REPOSITORY: ((repository))
   #TAG: latest <- overriden using script
-  #CONTEXT: 
+  CONTEXT: github-machete-dockerfile
 
 inputs:
 - name: container-semver
@@ -19,16 +19,4 @@ outputs:
 caches:
 - path: cache
 
-run:
-  path: /bin/sh
-  dir: .
-  args:
-    - -c
-    - |
-      #cat ./golang-cli/tag
-      #cat ./golang-cli/digest
-      # load the oci 
-      CONTEXT=$PWD/github-machete-dockerfile/docker/
-      DOCKERFILE=$PWD/github-machete-dockerfile/docker/Dockerfile
-      TAG=$(cat ./container-semver/number)
-      build
+run: {path: builder-task/build}

@@ -97,11 +97,11 @@ jobs:
         vars:
           input: github-machete-s3
           bin-name: s3
+          build-path: src/s3
       - put: s3-artifact
         params:
           file: bin/s3-*
           acl: public-read
-          build-path: src/s3
 
   - name: build-cloudformation
     public: true
@@ -116,8 +116,8 @@ jobs:
         vars:
           input: github-machete-cloudformation
           bin-name: cloudformation
+          build-path: src/cloudformation
       - put: cloudformation-artifact
         params:
           file: bin/cloudformation-*
           acl: public-read
-          build-path: src/cloudformation

@@ -33,13 +33,13 @@ resources:
     source:
       uri: https://github.com/Bit-Clouded/aws-swiss-army-machete.git
       branch: ci/build-plan
-      paths: ['src/s3/*', 'src/s3/**/*']
+      paths: ['src/s3/*', 'src/s3/**/*', 'src/build-task.yml']
   - name: github-machete-cloudformation
     type: git
     source:
       uri: https://github.com/Bit-Clouded/aws-swiss-army-machete.git
       branch: ci/build-plan
-      paths: ['src/cloudformation/*', 'src/cloudformation/**/*']
+      paths: ['src/cloudformation/*', 'src/cloudformation/**/*', 'src/build-task.yml']
   
   - name: golang-container
     type: registry-image

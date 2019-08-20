@@ -26,7 +26,8 @@ run:
     - -c
     - |
       cat ./golang-cli/tag
+      cat ./golang-cli/digest
       # load the oci 
       CONTEXT=$PWD/github-machete-dockerfile/docker/
-      TAG=$(cat ./golang-cli/tag)
-      /usr/bin/build
+      TAG=$(cat ./container-semver/number)
+      build

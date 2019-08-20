@@ -14,6 +14,7 @@ test-bucket: &test-bucket
   region_name: us-west-2
 
 resources:
+  # pipeline ci
   - name: concourse-pipeline
     type: concourse-pipeline
     source:
@@ -28,6 +29,7 @@ resources:
       branch: ci/build-plan
       paths: ['pipeline.yml']
   
+  # bin input
   - name: github-machete-s3
     type: git
     source:
@@ -40,20 +42,18 @@ resources:
       uri: https://github.com/Bit-Clouded/aws-swiss-army-machete.git
       branch: ci/build-plan
       paths: ['src/cloudformation/*', 'src/cloudformation/**/*', 'src/build-task.yml']
-  
-  - name: golang-container
+  - name: golang-build
     type: registry-image
     source:
       repository: golang
       tag: alpine
-
+  # bin output
   - name: s3-artifact
     type: s3
     source:
       << : *test-bucket
       regexp: aws-machete/bin/s3-(.*)
       initial_path: aws-machete/bin/s3-aaa
-  
   - name: cloudformation-artifact
     type: s3
     source:
@@ -61,12 +61,30 @@ resources:
       regexp: aws-machete/bin/cloudformation-(.*)
       initial_path: aws-machete/bin/cloudformation-aaa
 
+  # docker input
+  - name: golang-cli
+    # we are separating the cli base image from the build base image.
+    # this allows us to pinpoint if an issue caused by the image affects the build or the run time.
+    type: registry-image
+    source:
+      repository: golang
+      tag: alpine
+  - name: builder-task
+    type: registry-image
+    source:
+      repository: concourse/builder-task
   - name: container-semver
     type: semver
     source:
       << : *test-bucket
       key: aws-machete/semver-0.0
       initial_version: 0.0.0
+  - name: github-machete-dockerfile
+    type: git
+    source:
+      uri: https://github.com/Bit-Clouded/aws-swiss-army-machete.git
+      branch: ci/build-plan
+      paths: ['docker/*', 'docker/**/*']
 
 jobs:
   - name: set-pipelines
@@ -88,12 +106,12 @@ jobs:
       - get: concourse-pipeline
         passed: ['set-pipelines']
         trigger: true
-      - get: golang-container
+      - get: golang-build
         trigger: false
       - get: github-machete-s3
         trigger: true
       - task: build
-        image: golang-container
+        image: golang-build
         file: github-machete-s3/src/build-task.yml
         vars:
           input: github-machete-s3
@@ -110,12 +128,12 @@ jobs:
       - get: concourse-pipeline
         passed: ['set-pipelines']
         trigger: true
-      - get: golang-container
+      - get: golang-build
         trigger: false
       - get: github-machete-cloudformation
         trigger: true
       - task: build
-        image: golang-container
+        image: golang-build
         file: github-machete-cloudformation/src/build-task.yml
         vars:
           input: github-machete-cloudformation
@@ -131,9 +149,22 @@ jobs:
     plan:
       - get: container-semver
         trigger: true
+        params: {pre: rc}
       - get: cloudformation-artifact
         passed: ['build-cloudformation']
         trigger: true
       - get: s3-artifact
         passed: ['build-s3']
         trigger: true
+      - get: github-machete-dockerfile
+        trigger: true
+      - get: golang-cli
+        trigger: false
+        format: oci
+      - get: builder-task
+        trigger: false
+      - task: assemble
+        image: builder-task
+        file: github-machete-dockerfile/build-task.yml
+        vars:
+          repository: bitcloudedci/aws-machete:tagname

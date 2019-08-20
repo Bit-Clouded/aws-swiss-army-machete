@@ -1,0 +1,33 @@
+---
+platform: linux
+
+params:
+  REPOSITORY: ((repository))
+  #TAG: latest <- overriden using script
+  #CONTEXT: 
+
+inputs:
+- name: container-semver
+- name: cloudformation-artifact
+- name: s3-artifact
+- name: github-machete-dockerfile
+- name: golang-cli
+
+outputs:
+- name: image
+
+caches:
+- path: cache
+
+run:
+  path: /bin/sh
+  dir: .
+  args:
+    - -c
+    - |
+      cat ./golang-cli/img
+      # load the oci 
+      docker load -i ./golang-cli/image.tar
+      CONTEXT=$PWD/github-machete-dockerfile/docker/
+      TAG=$(cat ./golang-cli/img)
+      build

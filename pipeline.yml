@@ -104,7 +104,6 @@ jobs:
     public: true
     plan:
       - get: concourse-pipeline
-        passed: ['set-pipelines']
         trigger: true
       - get: golang-build
         trigger: false
@@ -126,7 +125,6 @@ jobs:
     public: true
     plan:
       - get: concourse-pipeline
-        passed: ['set-pipelines']
         trigger: true
       - get: golang-build
         trigger: false
@@ -166,6 +164,6 @@ jobs:
         trigger: false
       - task: assemble
         image: builder-task
-        file: github-machete-dockerfile/build-task.yml
+        file: github-machete-dockerfile/docker/build-task.yml
         vars:
           repository: bitcloudedci/aws-machete:tagname

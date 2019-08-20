@@ -134,6 +134,9 @@ progress "building"
 echo repository: $REPOSITORY
 echo tag_name: $tag_name
 echo dockerfile: $DOCKERFILE
+echo target_arg: $target_arg
+echo build_args: $build_args
+echo context: $CONTEXT
 img build --no-console -s /scratch/state -t $REPOSITORY:$tag_name -f $DOCKERFILE $target_arg $build_args $CONTEXT
 
 if [ -d ./cache ]; then

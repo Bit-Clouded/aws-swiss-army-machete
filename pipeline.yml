@@ -61,14 +61,12 @@ resources:
       regexp: aws-machete/bin/cloudformation-(.*)
       initial_path: aws-machete/bin/cloudformation-aaa
 
-#  - name: container-semver
-#    type: semver
-#    source:
-#      bucket: ((default-cicd-bucket))
-#      << : *test-bucket
-#      << : *aws-config
-#      key: aws-machete/semver-0.0
-#      initial_version: 0.0.0
+  - name: container-semver
+    type: semver
+    source:
+      << : *test-bucket
+      key: aws-machete/semver-0.0
+      initial_version: 0.0.0
 
 jobs:
   - name: set-pipelines
@@ -133,6 +131,9 @@ jobs:
     plan:
       - get: cloudformation-artifact
         passed: ['build-cloudformation']
+        trigger: true
+      - get: s3-artifact
+        passed: ['build-s3']
         trigger: true
       - get: s3-artifact
         passed: ['build-s3']

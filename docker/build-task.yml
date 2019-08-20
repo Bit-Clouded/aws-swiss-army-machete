@@ -29,6 +29,6 @@ run:
       #cat ./golang-cli/digest
       # load the oci 
       CONTEXT=$PWD/github-machete-dockerfile/docker/
-      DOCKERFILE$PWD/github-machete-dockerfile/docker/Dockerfile
+      DOCKERFILE=$PWD/github-machete-dockerfile/docker/Dockerfile
       TAG=$(cat ./container-semver/number)
       build

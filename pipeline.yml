@@ -87,6 +87,8 @@ jobs:
   - name: build-s3
     public: true
     plan:
+      - get: concourse-pipeline
+        trigger: true
       - get: golang-container
         trigger: false
       - get: github-machete-s3
@@ -106,6 +108,8 @@ jobs:
   - name: build-cloudformation
     public: true
     plan:
+      - get: concourse-pipeline
+        trigger: true
       - get: golang-container
         trigger: false
       - get: github-machete-cloudformation

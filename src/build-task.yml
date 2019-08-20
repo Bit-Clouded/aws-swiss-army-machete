@@ -13,7 +13,7 @@ run:
       go get -d ./...
       go test
       go build -o main .
-      VERSION=$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 13 ; echo '')
+      VERSION=$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 8 ; echo '')
       cp main ../../bin/((bin-name))-${VERSION}
 outputs:
   - name: bin

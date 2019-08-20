@@ -160,7 +160,8 @@ jobs:
         trigger: true
       - get: golang-cli
         trigger: false
-        format: oci
+        params:
+          format: oci
       - get: builder-task
         trigger: false
       - task: assemble

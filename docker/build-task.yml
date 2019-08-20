@@ -25,7 +25,7 @@ run:
   args:
     - -c
     - |
-      cat ./golang-cli/img
+      ls ./golang-cli/
       # load the oci 
       docker load -i ./golang-cli/image.tar
       CONTEXT=$PWD/github-machete-dockerfile/docker/

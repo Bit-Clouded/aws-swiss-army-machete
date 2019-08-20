@@ -1,0 +1,120 @@
+resource_types:
+  - name: concourse-pipeline
+    type: docker-image
+    source:
+      repository: concourse/concourse-pipeline-resource
+
+aws-config: &aws-config
+  access_key_id: ((aws-key-id))
+  secret_access_key: ((aws-key-secret))
+
+test-bucket: &test-bucket
+  << : *aws-config
+  bucket: ((default-cicd-bucket))
+  region_name: eu-west-1
+
+resources:
+  - name: pipeline
+    type: concourse-pipeline
+    source:
+      teams:
+      - name: main
+        username: ((concourse-main-username))
+        password: ((concourse-main-password))
+  - name: github-machete-pipeline
+    type: git
+    source:
+      uri: https://github.com/Bit-Clouded/aws-swiss-army-machete.git
+      branch: ci/concourse
+      paths: ['pipeline.yml']
+  
+  - name: github-machete-s3
+    type: git
+    source:
+      uri: https://github.com/Bit-Clouded/aws-swiss-army-machete.git
+      branch: ci/concourse
+      paths: ['src/s3/*', 'src/s3/**/*']
+  - name: github-machete-cloudformation
+    type: git
+    source:
+      uri: https://github.com/Bit-Clouded/aws-swiss-army-machete.git
+      branch: ci/concourse
+      paths: ['src/cloudformation/*', 'src/cloudformation/**/*']
+  
+  - name: golang-container
+    type: docker-image
+    source:
+      repository: golang:alpine
+
+  - name: s3-artifact
+    type: s3
+    source:
+      << : *test-bucket
+      regexp: aws-machete/s3-(.*).zip
+      initial_path: aws-machete/bin/s3-aaa
+  
+  - name: cloudformation-artifact
+    type: s3
+    source:
+      << : *test-bucket
+      regexp: aws-machete/cloudformation/(.*).zip
+      initial_path: aws-machete/bin/cloudformation-aaa
+
+  - name: container-semver
+    type: semver
+    source:
+      bucket: ((default-cicd-bucket))
+      << : *test-bucket
+      << : *aws-config
+      key: aws-machete/semver-0.0
+      initial_version: 0.0.0
+
+jobs:
+  - name: set-pipelines
+    public: true
+    plan:
+      - get: github-machete-pipeline
+        trigger: true
+      - put: pipeline
+        params:
+          pipelines:
+          - name: aws-machete
+            unpaused: true
+            team: main
+            config_file: github-machete-pipeline/pipeline.yml
+
+  - name: build-s3
+    public: true
+    plan:
+      - get: golang-container
+        trigger: false
+      - get: github-machete-s3
+        trigger: true
+      - task: build
+        image: golang-container
+        file: src/build-task.yml
+        vars:
+          input: github-machete-s3
+          bin-name: s3
+      - put: s3-artifact
+        params:
+          file: bin/s3-*
+          acl: public-read
+
+  - name: build-cloudformation
+    public: true
+    plan:
+      - get: golang-container
+        trigger: false
+      - get: github-machete-cloudformation
+        trigger: true
+      - task: build
+        image: golang-container
+        file: src/build-task.yml
+        vars:
+          input: github-machete-cloudformation
+          bin-name: cloudformation
+      - put: cloudformation-artifact
+        params:
+          file: bin/cloudformation-*
+          acl: public-read

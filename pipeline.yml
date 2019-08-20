@@ -104,7 +104,8 @@ jobs:
     public: true
     plan:
       - get: concourse-pipeline
-        trigger: true
+        passed: ['set-pipelines']
+        trigger: false
       - get: golang-build
         trigger: false
       - get: github-machete-s3
@@ -125,7 +126,8 @@ jobs:
     public: true
     plan:
       - get: concourse-pipeline
-        trigger: true
+        passed: ['set-pipelines']
+        trigger: false
       - get: golang-build
         trigger: false
       - get: github-machete-cloudformation

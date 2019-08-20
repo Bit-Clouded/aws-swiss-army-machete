@@ -19,4 +19,4 @@ outputs:
 caches:
 - path: cache
 
-run: {path: /github-machete-dockerfile/docker/build}
+run: {path: github-machete-dockerfile/docker/build}

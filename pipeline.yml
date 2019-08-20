@@ -70,6 +70,7 @@ resources:
       repository: golang
       tag: alpine
   - name: builder-task
+    privileged: true
     type: registry-image
     source:
       repository: concourse/builder-task

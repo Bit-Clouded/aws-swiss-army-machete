@@ -29,5 +29,7 @@ run:
       cat ./golang-cli/digest
       # load the oci 
       CONTEXT=$PWD/github-machete-dockerfile/docker/
+      echo $CONTEXT
       TAG=$(cat ./container-semver/number)
+      echo $CONTENT
       build

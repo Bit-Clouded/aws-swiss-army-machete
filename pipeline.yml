@@ -169,4 +169,4 @@ jobs:
         file: github-machete-dockerfile/docker/build-task.yml
         privileged: true
         vars:
-          repository: bitcloudedci/aws-machete:tagname
+          repository: bitcloudedci/aws-machete

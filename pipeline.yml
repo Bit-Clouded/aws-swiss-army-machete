@@ -88,6 +88,7 @@ jobs:
     public: true
     plan:
       - get: concourse-pipeline
+        passed: ['set-pipelines']
         trigger: true
       - get: golang-container
         trigger: false
@@ -109,6 +110,7 @@ jobs:
     public: true
     plan:
       - get: concourse-pipeline
+        passed: ['set-pipelines']
         trigger: true
       - get: golang-container
         trigger: false

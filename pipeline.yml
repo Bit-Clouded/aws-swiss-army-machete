@@ -135,6 +135,5 @@ jobs:
       - get: s3-artifact
         passed: ['build-s3']
         trigger: true
-      - get: s3-artifact
-        passed: ['build-s3']
+      - get: container-semver
         trigger: true

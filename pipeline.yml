@@ -11,10 +11,10 @@ aws-config: &aws-config
 test-bucket: &test-bucket
   << : *aws-config
   bucket: ((default-cicd-bucket))
-  region_name: eu-west-1
+  region_name: us-west-2
 
 resources:
-  - name: pipeline
+  - name: concourse-pipeline
     type: concourse-pipeline
     source:
       teams:
@@ -25,26 +25,27 @@ resources:
     type: git
     source:
       uri: https://github.com/Bit-Clouded/aws-swiss-army-machete.git
-      branch: ci/concourse
+      branch: ci/build-plan
       paths: ['pipeline.yml']
   
   - name: github-machete-s3
     type: git
     source:
       uri: https://github.com/Bit-Clouded/aws-swiss-army-machete.git
-      branch: ci/concourse
+      branch: ci/build-plan
       paths: ['src/s3/*', 'src/s3/**/*']
   - name: github-machete-cloudformation
     type: git
     source:
       uri: https://github.com/Bit-Clouded/aws-swiss-army-machete.git
-      branch: ci/concourse
+      branch: ci/build-plan
       paths: ['src/cloudformation/*', 'src/cloudformation/**/*']
   
   - name: golang-container
-    type: docker-image
+    type: registry-image
     source:
-      repository: golang:alpine
+      repository: golang
+      tag: alpine
 
   - name: s3-artifact
     type: s3
@@ -60,14 +61,14 @@ resources:
       regexp: aws-machete/cloudformation/(.*).zip
       initial_path: aws-machete/bin/cloudformation-aaa
 
-  - name: container-semver
-    type: semver
-    source:
-      bucket: ((default-cicd-bucket))
-      << : *test-bucket
-      << : *aws-config
-      key: aws-machete/semver-0.0
-      initial_version: 0.0.0
+#  - name: container-semver
+#    type: semver
+#    source:
+#      bucket: ((default-cicd-bucket))
+#      << : *test-bucket
+#      << : *aws-config
+#      key: aws-machete/semver-0.0
+#      initial_version: 0.0.0
 
 jobs:
   - name: set-pipelines
@@ -75,7 +76,7 @@ jobs:
     plan:
       - get: github-machete-pipeline
         trigger: true
-      - put: pipeline
+      - put: concourse-pipeline
         params:
           pipelines:
           - name: aws-machete
@@ -92,7 +93,7 @@ jobs:
         trigger: true
       - task: build
         image: golang-container
-        file: src/build-task.yml
+        file: github-machete-s3/src/build-task.yml
         vars:
           input: github-machete-s3
           bin-name: s3
@@ -100,6 +101,7 @@ jobs:
         params:
           file: bin/s3-*
           acl: public-read
+          build-path: src/s3
 
   - name: build-cloudformation
     public: true
@@ -110,7 +112,7 @@ jobs:
         trigger: true
       - task: build
         image: golang-container
-        file: src/build-task.yml
+        file: github-machete-cloudformation/src/build-task.yml
         vars:
           input: github-machete-cloudformation
           bin-name: cloudformation
@@ -118,3 +120,4 @@ jobs:
         params:
           file: bin/cloudformation-*
           acl: public-read
+          build-path: src/cloudformation

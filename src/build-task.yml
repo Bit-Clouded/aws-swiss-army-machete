@@ -5,7 +5,7 @@ inputs:
     path: /
 run:
   path: /bin/sh
-  dir: alb-rule-assigner
+  dir: ((build-path))
   args:
     - -c
     - |
@@ -17,6 +17,3 @@ run:
       cp main ../bin/((bin-name))-${VERSION}
 outputs:
   - name: bin
-
-# fly -t prod execute --image golang-build-container \
-#   -c ./build-task.yml -j citrus-rind/build-lambda -o lambda-zip=./

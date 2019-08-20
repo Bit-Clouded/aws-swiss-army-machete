@@ -51,14 +51,14 @@ resources:
     type: s3
     source:
       << : *test-bucket
-      regexp: aws-machete/s3-(.*).zip
+      regexp: aws-machete/bin/s3-(.*)
       initial_path: aws-machete/bin/s3-aaa
   
   - name: cloudformation-artifact
     type: s3
     source:
       << : *test-bucket
-      regexp: aws-machete/cloudformation/(.*).zip
+      regexp: aws-machete/bin/cloudformation-(.*)
       initial_path: aws-machete/bin/cloudformation-aaa
 
 #  - name: container-semver

@@ -70,7 +70,6 @@ resources:
       repository: golang
       tag: alpine
   - name: builder-task
-    privileged: true
     type: registry-image
     source:
       repository: concourse/builder-task
@@ -168,5 +167,6 @@ jobs:
       - task: assemble
         image: builder-task
         file: github-machete-dockerfile/docker/build-task.yml
+        privileged: true
         vars:
           repository: bitcloudedci/aws-machete:tagname

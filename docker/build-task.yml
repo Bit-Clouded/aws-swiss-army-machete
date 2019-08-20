@@ -29,4 +29,4 @@ run:
       # load the oci 
       CONTEXT=$PWD/github-machete-dockerfile/docker/
       TAG=$(cat ./golang-cli/tag)
-      build
+      /usr/bin/build

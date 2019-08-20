@@ -19,4 +19,4 @@ outputs:
 caches:
 - path: cache
 
-run: {path: builder-task/build}
+run: {path: /usr/bin/build}

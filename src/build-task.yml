@@ -3,6 +3,7 @@ platform: linux
 inputs:
   - name: ((input))
     path: /
+
 run:
   path: /bin/sh
   dir: ((build-path))
@@ -15,5 +16,6 @@ run:
       go build -o main .
       VERSION=$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 8 ; echo '')
       cp main ../../bin/((bin-name))-${VERSION}
+
 outputs:
   - name: bin

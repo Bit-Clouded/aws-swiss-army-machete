@@ -127,3 +127,13 @@ jobs:
         params:
           file: bin/cloudformation-*
           acl: public-read
+
+  - name: docker-build
+    public: true
+    plan:
+      - get: cloudformation-artifact
+        passed: ['build-cloudformation']
+        trigger: true
+      - get: s3-artifact
+        passed: ['build-s3']
+        trigger: true

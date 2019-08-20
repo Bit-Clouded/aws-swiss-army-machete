@@ -129,11 +129,11 @@ jobs:
   - name: docker-build
     public: true
     plan:
+      - get: container-semver
+        trigger: true
       - get: cloudformation-artifact
         passed: ['build-cloudformation']
         trigger: true
       - get: s3-artifact
         passed: ['build-s3']
-        trigger: true
-      - get: container-semver
         trigger: true

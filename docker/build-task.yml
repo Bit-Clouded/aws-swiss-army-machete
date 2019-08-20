@@ -12,6 +12,7 @@ inputs:
 - name: s3-artifact
 - name: github-machete-dockerfile
 - name: golang-cli
+- name: builder-task
 
 outputs:
 - name: image
@@ -19,4 +20,4 @@ outputs:
 caches:
 - path: cache
 
-run: {path: github-machete-dockerfile/docker/build}
+run: {path: /usr/bin/build}

@@ -85,6 +85,12 @@ resources:
       uri: https://github.com/Bit-Clouded/aws-swiss-army-machete.git
       branch: ci/build-plan
       paths: ['docker/*', 'docker/**/*']
+  - name: test-image
+    type: registry-image
+    source:
+      repository: bitcloudedci/aws-machete
+      username: ((dh-username))
+      password: ((dh-password))
 
 jobs:
   - name: set-pipelines
@@ -170,3 +176,4 @@ jobs:
         privileged: true
         vars:
           repository: bitcloudedci/aws-machete
+      - put: test-image

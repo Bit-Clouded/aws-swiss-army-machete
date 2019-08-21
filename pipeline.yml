@@ -252,6 +252,8 @@ jobs:
           bump: patch
 
   - name: reset-release-semvers
+    public: true
+    plan:
       - get: container-prod-semver
         passed: ['promote-to-release']
         trigger: true

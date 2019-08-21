@@ -73,12 +73,6 @@ resources:
     type: registry-image
     source:
       repository: concourse/builder-task
-  - name: container-semver
-    type: semver
-    source:
-      << : *test-bucket
-      key: aws-machete/semver-0.0
-      initial_version: 0.0.0
   - name: github-machete-dockerfile
     type: git
     source:
@@ -91,6 +85,38 @@ resources:
       repository: bitcloudedci/aws-machete
       username: ((dh-username))
       password: ((dh-password))
+  - name: rc-image
+    type: registry-image
+    source:
+      repository: bitcloudedci/aws-machete
+      username: ((dh-username))
+      password: ((dh-password))
+  - name: prod-image
+    type: registry-image
+    source:
+      repository: bitclouded/aws-machete
+      username: ((dh-username))
+      password: ((dh-password))
+
+  - name: container-prod-semver
+    type: semver
+    source:
+      << : *test-bucket
+      key: aws-machete/semver-prod-0.0
+      initial_version: 0.0.0
+  - name: container-test-semver
+    type: semver
+    source:
+      << : *test-bucket
+      key: aws-machete/semver-test-0.0
+      initial_version: 0.0.0
+  - name: container-rc-semver
+    type: semver
+    source:
+      << : *test-bucket
+      key: aws-machete/semver-rc-0.0
+      initial_version: 0.0.0
+
 
 jobs:
   - name: set-pipelines
@@ -153,9 +179,9 @@ jobs:
   - name: docker-build
     public: true
     plan:
-      - get: container-semver
-        trigger: true
-        params: {pre: rc}
+      - get: container-test-semver
+        trigger: false
+        params: {pre: test}
       - get: cloudformation-artifact
         passed: ['build-cloudformation']
         trigger: true
@@ -179,4 +205,57 @@ jobs:
       - put: test-image
         params:
           image: image/image.tar
-          additional_tags: container-semver/number
+          additional_tags: container-test-semver/number
+      - put: container-test-semver
+        params:
+          file: container-test-semver/number
+
+  - name: promote-to-rc
+    public: true
+    plan:
+      - get: test-image
+        passed: ['docker-build']
+        params:
+          format: oci
+      - get: container-rc-semver
+        trigger: false
+        params: {pre: rc}
+      - put: rc-image
+        params:
+          image: test-image/image.tar
+          additional_tags: container-rc-semver/number
+      - put: container-rc-semver
+        params:
+          file: container-rc-semver/number
+
+  - name: promote-to-release
+    public: true
+    plan:
+      - get: rc-image
+        passed: ['promote-to-rc']
+        params:
+          format: oci
+      - get: container-rc-semver
+        trigger: false
+        params: {bump: final}
+      - put: prod-image
+        params:
+          image: rc-image/image.tar
+          additional_tags: container-rc-semver/number
+      - put: container-prod-semver
+        params:
+          file: container-rc-semver/number
+      - put: container-prod-semver
+        params:
+          bump: patch
+
+  - name: reset-release-semvers
+      - get: container-prod-semver
+        passed: ['promote-to-release']
+        trigger: true
+      - put: container-test-semver
+        params:
+          file: container-prod-semver/number
+      - put: container-rc-semver
+        params:
+          file: container-prod-semver/number

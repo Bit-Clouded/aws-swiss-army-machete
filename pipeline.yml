@@ -179,3 +179,4 @@ jobs:
       - put: test-image
         params:
           image: image/image.tar
+          additional_tags: container-semver/number

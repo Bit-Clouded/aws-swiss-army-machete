@@ -215,6 +215,7 @@ jobs:
     plan:
       - get: test-image
         passed: ['docker-build']
+        trigger: false
         params:
           format: oci
       - get: container-rc-semver
@@ -233,6 +234,7 @@ jobs:
     plan:
       - get: rc-image
         passed: ['promote-to-rc']
+        trigger: false
         params:
           format: oci
       - get: container-rc-semver

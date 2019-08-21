@@ -178,4 +178,4 @@ jobs:
           repository: bitcloudedci/aws-machete
       - put: test-image
         params:
-          image: assemble/image
+          image: image/image.tar

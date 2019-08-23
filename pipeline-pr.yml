@@ -26,8 +26,8 @@ resources:
     check_every: 24h
     webhook_token: 'Password1234'
     source:
-      repository: https://github.com/Bit-Clouded/aws-swiss-army-machete.git
-      webhook_token: ((webhook-token))
+      repository: Bit-Clouded/aws-swiss-army-machete
+      access_token: ((access_token))
 
   - name: golang-build
     type: registry-image
@@ -104,6 +104,11 @@ jobs:
           input: github-machete-pr
           bin-name: s3
           build-path: src/s3
+        on_failure:
+          put: github-machete-pr
+          params:
+            path: github-machete-pr
+            status: FAILURE
       - put: s3-artifact
         params:
           file: bin/s3-*
@@ -123,9 +128,14 @@ jobs:
         image: golang-build
         file: github-machete-master/src/build-task.yml
         vars:
-          input: github-machete-cloudformation
+          input: github-machete-pr
           bin-name: cloudformation
           build-path: src/cloudformation
+        on_failure:
+          put: github-machete-pr
+          params:
+            path: github-machete-pr
+            status: FAILURE
       - put: cloudformation-artifact
         params:
           file: bin/cloudformation-*
@@ -158,6 +168,13 @@ jobs:
         privileged: true
         vars:
           repository: bitcloudedci/aws-machete
+          docker-semver: container-pr-semver
+          dockerfile: github-machete-pr
+        on_failure:
+          put: github-machete-pr
+          params:
+            path: github-machete-pr
+            status: FAILURE
       - put: pr-image
         params:
           image: image/image.tar

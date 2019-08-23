@@ -205,6 +205,8 @@ jobs:
         privileged: true
         vars:
           repository: bitcloudedci/aws-machete
+          docker-semver: container-test-semver
+          dockerfile: github-machete-dockerfile
       - put: test-image
         params:
           image: image/image.tar

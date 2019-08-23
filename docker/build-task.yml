@@ -7,10 +7,10 @@ params:
   #CONTEXT: github-machete-dockerfile <- overriden using script
 
 inputs:
-- name: container-test-semver
+- name: ((docker-semver))
 - name: cloudformation-artifact
 - name: s3-artifact
-- name: github-machete-dockerfile
+- name: dockerfile
 - name: golang-cli
 
 outputs:
@@ -28,8 +28,8 @@ run:
       # fill in args for dockerfile
       BUILD_ARGS_GOLANG_BASE=$(cat ./golang-cli/tag)
       BUILD_ARGS_GOLANG_BASE_DIGEST=$(cat ./golang-cli/digest)
-      TAG=$(cat ./container-test-semver/number)
-      CONTEXT=$PWD/github-machete-dockerfile/docker
+      TAG=$(cat ./((docker-semver))/number)
+      CONTEXT=$PWD/((dockerfile))/docker
       
       # copy built bin into dockerfile
       cp ./s3-artifact/s3-* $CONTEXT/s3

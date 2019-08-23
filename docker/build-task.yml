@@ -10,7 +10,7 @@ inputs:
 - name: ((docker-semver))
 - name: cloudformation-artifact
 - name: s3-artifact
-- name: dockerfile
+- name: ((dockerfile))
 - name: golang-cli
 
 outputs:

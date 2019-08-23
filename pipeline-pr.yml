@@ -109,7 +109,7 @@ jobs:
           put: github-machete-pr
           params:
             path: github-machete-pr
-            status: FAILURE
+            status: failure
       - put: s3-artifact
         params:
           file: bin/s3-*
@@ -136,7 +136,7 @@ jobs:
           put: github-machete-pr
           params:
             path: github-machete-pr
-            status: FAILURE
+            status: failure
       - put: cloudformation-artifact
         params:
           file: bin/cloudformation-*
@@ -175,7 +175,7 @@ jobs:
           put: github-machete-pr
           params:
             path: github-machete-pr
-            status: FAILURE
+            status: failure
       - put: pr-image
         params:
           image: image/image.tar
@@ -183,4 +183,8 @@ jobs:
       - put: container-pr-semver
         params:
           file: container-pr-semver/number
+      - put: github-machete-pr
+        params:
+          path: github-machete-pr
+          status: success
 

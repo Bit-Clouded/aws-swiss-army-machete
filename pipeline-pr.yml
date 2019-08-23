@@ -21,6 +21,7 @@ resources:
     source:
       uri: https://github.com/Bit-Clouded/aws-swiss-army-machete.git
 
+  # input build.
   - name: github-machete-pr
     type: pull-request
     check_every: 24h
@@ -28,12 +29,12 @@ resources:
     source:
       repository: Bit-Clouded/aws-swiss-army-machete
       access_token: ((access_token))
-
   - name: golang-build
     type: registry-image
     source:
       repository: golang
       tag: alpine
+
   # bin output
   - name: s3-artifact
     type: s3
@@ -182,3 +183,4 @@ jobs:
       - put: container-pr-semver
         params:
           file: container-pr-semver/number
+

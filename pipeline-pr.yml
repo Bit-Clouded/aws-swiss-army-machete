@@ -1,0 +1,184 @@
+resource_types:
+- name: pull-request
+  type: docker-image
+  source:
+    repository: teliaoss/github-pr-resource
+
+aws-config: &aws-config
+  access_key_id: ((aws-key-id))
+  secret_access_key: ((aws-key-secret))
+
+test-bucket: &test-bucket
+  << : *aws-config
+  bucket: ((default-cicd-bucket))
+  region_name: us-west-2
+
+resources:
+  # leave the build config on master
+  # to prevent people from modifying the build plan from a PR.
+  - name: github-machete-master
+    type: git
+    source:
+      uri: https://github.com/Bit-Clouded/aws-swiss-army-machete.git
+
+  - name: github-machete-pr
+    type: pull-request
+    check_every: 24h
+    webhook_token: 'Password1234'
+    source:
+      repository: Bit-Clouded/aws-swiss-army-machete
+      access_token: ((access_token))
+
+  - name: golang-build
+    type: registry-image
+    source:
+      repository: golang
+      tag: alpine
+  # bin output
+  - name: s3-artifact
+    type: s3
+    source:
+      << : *test-bucket
+      regexp: aws-machete/bin/s3-(.*)
+      initial_path: aws-machete/bin/s3-aaa
+  - name: cloudformation-artifact
+    type: s3
+    source:
+      << : *test-bucket
+      regexp: aws-machete/bin/cloudformation-(.*)
+      initial_path: aws-machete/bin/cloudformation-aaa
+
+  # docker input
+  - name: golang-cli
+    # we are separating the cli base image from the build base image.
+    # this allows us to pinpoint if an issue caused by the image affects the build or the run time.
+    type: registry-image
+    source:
+      repository: golang
+      tag: alpine
+  - name: builder-task
+    type: registry-image
+    source:
+      repository: concourse/builder-task
+  - name: pr-image
+    type: registry-image
+    source:
+      repository: bitcloudedci/aws-machete
+      username: ((dh-username))
+      password: ((dh-password))
+
+  - name: container-pr-semver
+    type: semver
+    source:
+      << : *test-bucket
+      key: aws-machete/semver-pr-0.0
+      initial_version: 0.0.0
+
+
+jobs:
+  - name: github-pr-set-status
+    public: true
+    plan:
+      - get: github-machete-pr
+        trigger: true
+        version: every
+      - put: github-machete-pr
+        params:
+          path: github-machete-pr
+          status: pending
+
+  - name: build-s3
+    public: true
+    plan:
+      - get: golang-build
+        trigger: false
+      - get: github-machete-pr
+        trigger: true
+        passed: ['github-pr-set-status']
+      - get: github-machete-master
+        trigger: false
+      - task: build
+        image: golang-build
+        file: github-machete-master/src/build-task.yml
+        vars:
+          input: github-machete-pr
+          bin-name: s3
+          build-path: src/s3
+        on_failure:
+          put: github-machete-pr
+          params:
+            path: github-machete-pr
+            status: FAILURE
+      - put: s3-artifact
+        params:
+          file: bin/s3-*
+          acl: public-read
+
+  - name: build-cloudformation
+    public: true
+    plan:
+      - get: golang-build
+        trigger: false
+      - get: github-machete-pr
+        trigger: true
+        passed: ['github-pr-set-status']
+      - get: github-machete-master
+        trigger: false
+      - task: build
+        image: golang-build
+        file: github-machete-master/src/build-task.yml
+        vars:
+          input: github-machete-pr
+          bin-name: cloudformation
+          build-path: src/cloudformation
+        on_failure:
+          put: github-machete-pr
+          params:
+            path: github-machete-pr
+            status: FAILURE
+      - put: cloudformation-artifact
+        params:
+          file: bin/cloudformation-*
+          acl: public-read
+
+  - name: docker-build
+    public: true
+    plan:
+      - get: container-pr-semver
+        trigger: false
+        params: {pre: pr}
+      - get: cloudformation-artifact
+        passed: ['build-cloudformation']
+        trigger: true
+      - get: s3-artifact
+        passed: ['build-s3']
+        trigger: true
+      - get: github-machete-pr
+        passed: ['github-pr-set-status']
+        trigger: false
+      - get: golang-cli
+        trigger: false
+        params:
+          format: oci
+      - get: builder-task
+        trigger: false
+      - task: assemble
+        image: builder-task
+        file: github-machete-pr/docker/build-task.yml
+        privileged: true
+        vars:
+          repository: bitcloudedci/aws-machete
+          docker-semver: container-pr-semver
+          dockerfile: github-machete-pr
+        on_failure:
+          put: github-machete-pr
+          params:
+            path: github-machete-pr
+            status: FAILURE
+      - put: pr-image
+        params:
+          image: image/image.tar
+          additional_tags: container-pr-semver/number
+      - put: container-pr-semver
+        params:
+          file: container-pr-semver/number

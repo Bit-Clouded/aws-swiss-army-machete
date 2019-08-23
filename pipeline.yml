@@ -26,21 +26,18 @@ resources:
     type: git
     source:
       uri: https://github.com/Bit-Clouded/aws-swiss-army-machete.git
-      branch: ci/build-plan
-      paths: ['pipeline.yml']
+      paths: ['pipeline.yml, pipelin-pr.yml']
   
   # bin input
   - name: github-machete-s3
     type: git
     source:
       uri: https://github.com/Bit-Clouded/aws-swiss-army-machete.git
-      branch: ci/build-plan
       paths: ['src/s3/*', 'src/s3/**/*', 'src/build-task.yml']
   - name: github-machete-cloudformation
     type: git
     source:
       uri: https://github.com/Bit-Clouded/aws-swiss-army-machete.git
-      branch: ci/build-plan
       paths: ['src/cloudformation/*', 'src/cloudformation/**/*', 'src/build-task.yml']
   - name: golang-build
     type: registry-image
@@ -77,7 +74,6 @@ resources:
     type: git
     source:
       uri: https://github.com/Bit-Clouded/aws-swiss-army-machete.git
-      branch: ci/build-plan
       paths: ['docker/*', 'docker/**/*']
   - name: test-image
     type: registry-image
@@ -131,6 +127,13 @@ jobs:
             unpaused: true
             team: main
             config_file: github-machete-pipeline/pipeline.yml
+      - put: concourse-pipeline
+        params:
+          pipelines:
+          - name: aws-machete-r
+            unpaused: true
+            team: main
+            config_file: github-machete-pipeline/pipeline-pr.yml
 
   - name: build-s3
     public: true
@@ -202,6 +205,8 @@ jobs:
         privileged: true
         vars:
           repository: bitcloudedci/aws-machete
+          docker-semver: container-test-semver
+          dockerfile: github-machete-dockerfile
       - put: test-image
         params:
           image: image/image.tar

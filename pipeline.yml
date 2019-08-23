@@ -1,0 +1,265 @@
+resource_types:
+  - name: concourse-pipeline
+    type: docker-image
+    source:
+      repository: concourse/concourse-pipeline-resource
+
+aws-config: &aws-config
+  access_key_id: ((aws-key-id))
+  secret_access_key: ((aws-key-secret))
+
+test-bucket: &test-bucket
+  << : *aws-config
+  bucket: ((default-cicd-bucket))
+  region_name: us-west-2
+
+resources:
+  # pipeline ci
+  - name: concourse-pipeline
+    type: concourse-pipeline
+    source:
+      teams:
+      - name: main
+        username: ((concourse-main-username))
+        password: ((concourse-main-password))
+  - name: github-machete-pipeline
+    type: git
+    source:
+      uri: https://github.com/Bit-Clouded/aws-swiss-army-machete.git
+      branch: ci/build-plan
+      paths: ['pipeline.yml']
+  
+  # bin input
+  - name: github-machete-s3
+    type: git
+    source:
+      uri: https://github.com/Bit-Clouded/aws-swiss-army-machete.git
+      branch: ci/build-plan
+      paths: ['src/s3/*', 'src/s3/**/*', 'src/build-task.yml']
+  - name: github-machete-cloudformation
+    type: git
+    source:
+      uri: https://github.com/Bit-Clouded/aws-swiss-army-machete.git
+      branch: ci/build-plan
+      paths: ['src/cloudformation/*', 'src/cloudformation/**/*', 'src/build-task.yml']
+  - name: golang-build
+    type: registry-image
+    source:
+      repository: golang
+      tag: alpine
+  # bin output
+  - name: s3-artifact
+    type: s3
+    source:
+      << : *test-bucket
+      regexp: aws-machete/bin/s3-(.*)
+      initial_path: aws-machete/bin/s3-aaa
+  - name: cloudformation-artifact
+    type: s3
+    source:
+      << : *test-bucket
+      regexp: aws-machete/bin/cloudformation-(.*)
+      initial_path: aws-machete/bin/cloudformation-aaa
+
+  # docker input
+  - name: golang-cli
+    # we are separating the cli base image from the build base image.
+    # this allows us to pinpoint if an issue caused by the image affects the build or the run time.
+    type: registry-image
+    source:
+      repository: golang
+      tag: alpine
+  - name: builder-task
+    type: registry-image
+    source:
+      repository: concourse/builder-task
+  - name: github-machete-dockerfile
+    type: git
+    source:
+      uri: https://github.com/Bit-Clouded/aws-swiss-army-machete.git
+      branch: ci/build-plan
+      paths: ['docker/*', 'docker/**/*']
+  - name: test-image
+    type: registry-image
+    source:
+      repository: bitcloudedci/aws-machete
+      username: ((dh-username))
+      password: ((dh-password))
+  - name: rc-image
+    type: registry-image
+    source:
+      repository: bitcloudedci/aws-machete
+      username: ((dh-username))
+      password: ((dh-password))
+  - name: prod-image
+    type: registry-image
+    source:
+      repository: bitclouded/aws-machete
+      username: ((dh-username))
+      password: ((dh-password))
+
+  - name: container-prod-semver
+    type: semver
+    source:
+      << : *test-bucket
+      key: aws-machete/semver-prod-0.0
+      initial_version: 0.0.0
+  - name: container-test-semver
+    type: semver
+    source:
+      << : *test-bucket
+      key: aws-machete/semver-test-0.0
+      initial_version: 0.0.0
+  - name: container-rc-semver
+    type: semver
+    source:
+      << : *test-bucket
+      key: aws-machete/semver-rc-0.0
+      initial_version: 0.0.0
+
+
+jobs:
+  - name: set-pipelines
+    public: true
+    plan:
+      - get: github-machete-pipeline
+        trigger: true
+      - put: concourse-pipeline
+        params:
+          pipelines:
+          - name: aws-machete
+            unpaused: true
+            team: main
+            config_file: github-machete-pipeline/pipeline.yml
+
+  - name: build-s3
+    public: true
+    plan:
+      - get: concourse-pipeline
+        passed: ['set-pipelines']
+        trigger: false
+      - get: golang-build
+        trigger: false
+      - get: github-machete-s3
+        trigger: true
+      - task: build
+        image: golang-build
+        file: github-machete-s3/src/build-task.yml
+        vars:
+          input: github-machete-s3
+          bin-name: s3
+          build-path: src/s3
+      - put: s3-artifact
+        params:
+          file: bin/s3-*
+          acl: public-read
+
+  - name: build-cloudformation
+    public: true
+    plan:
+      - get: concourse-pipeline
+        passed: ['set-pipelines']
+        trigger: false
+      - get: golang-build
+        trigger: false
+      - get: github-machete-cloudformation
+        trigger: true
+      - task: build
+        image: golang-build
+        file: github-machete-cloudformation/src/build-task.yml
+        vars:
+          input: github-machete-cloudformation
+          bin-name: cloudformation
+          build-path: src/cloudformation
+      - put: cloudformation-artifact
+        params:
+          file: bin/cloudformation-*
+          acl: public-read
+
+  - name: docker-build
+    public: true
+    plan:
+      - get: container-test-semver
+        trigger: false
+        params: {pre: test}
+      - get: cloudformation-artifact
+        passed: ['build-cloudformation']
+        trigger: true
+      - get: s3-artifact
+        passed: ['build-s3']
+        trigger: true
+      - get: github-machete-dockerfile
+        trigger: true
+      - get: golang-cli
+        trigger: false
+        params:
+          format: oci
+      - get: builder-task
+        trigger: false
+      - task: assemble
+        image: builder-task
+        file: github-machete-dockerfile/docker/build-task.yml
+        privileged: true
+        vars:
+          repository: bitcloudedci/aws-machete
+      - put: test-image
+        params:
+          image: image/image.tar
+          additional_tags: container-test-semver/number
+      - put: container-test-semver
+        params:
+          file: container-test-semver/number
+
+  - name: promote-to-rc
+    public: true
+    plan:
+      - get: test-image
+        passed: ['docker-build']
+        trigger: false
+        params:
+          format: oci
+      - get: container-rc-semver
+        trigger: false
+        params: {pre: rc}
+      - put: rc-image
+        params:
+          image: test-image/image.tar
+          additional_tags: container-rc-semver/number
+      - put: container-rc-semver
+        params:
+          file: container-rc-semver/number
+
+  - name: promote-to-release
+    public: true
+    plan:
+      - get: rc-image
+        passed: ['promote-to-rc']
+        trigger: false
+        params:
+          format: oci
+      - get: container-rc-semver
+        trigger: false
+        params: {bump: final}
+      - put: prod-image
+        params:
+          image: rc-image/image.tar
+          additional_tags: container-rc-semver/number
+      - put: container-prod-semver
+        params:
+          file: container-rc-semver/number
+      - put: container-prod-semver
+        params:
+          bump: patch
+
+  - name: reset-release-semvers
+    public: true
+    plan:
+      - get: container-prod-semver
+        passed: ['promote-to-release']
+        trigger: true
+      - put: container-test-semver
+        params:
+          file: container-prod-semver/number
+      - put: container-rc-semver
+        params:
+          file: container-prod-semver/number

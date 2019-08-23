@@ -1,0 +1,45 @@
+---
+platform: linux
+
+params:
+  REPOSITORY: ((repository))
+  #TAG: latest <- overriden using script
+  #CONTEXT: github-machete-dockerfile <- overriden using script
+
+inputs:
+- name: container-test-semver
+- name: cloudformation-artifact
+- name: s3-artifact
+- name: github-machete-dockerfile
+- name: golang-cli
+
+outputs:
+- name: image
+
+caches:
+- path: cache
+
+run:
+  path: /bin/sh
+  dir: .
+  args:
+    - -c
+    - |
+      # fill in args for dockerfile
+      BUILD_ARGS_GOLANG_BASE=$(cat ./golang-cli/tag)
+      BUILD_ARGS_GOLANG_BASE_DIGEST=$(cat ./golang-cli/digest)
+      TAG=$(cat ./container-test-semver/number)
+      CONTEXT=$PWD/github-machete-dockerfile/docker
+      
+      # copy built bin into dockerfile
+      cp ./s3-artifact/s3-* $CONTEXT/s3
+      cp ./cloudformation-artifact/cloudformation-* $CONTEXT/cloudformation
+
+      # build
+      cd $CONTEXT
+      mkdir image
+      build
+
+      # copy to output folder
+      cd ../..
+      cp $CONTEXT/image/* ./image/
